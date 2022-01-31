@@ -211,7 +211,7 @@ for i = 1:n_sess
         prClNum = double(predictClass);
         fprintf('IdentityClass Session:%d, Observation:%d, IdentClNum:%d\n', i, k, prClNum);
 
-        predictedScores = predict(regNets{i}, X2(:, k, i)');
+        predictedScores = predict(regNets{prClNum}, X2(:, k, i)');
         Y2(:, k, i) = predictedScores';
 
     end
@@ -236,4 +236,4 @@ fprintf('GMDH ANN M in:%d, N out:%d, Sess:%d ,Err: %f\n', m_in, n_out, n_sess, S
 
 %% Error and Series Plot
 %w_series2_err_graph(Y2, Yh2);
-w_seriesv_ser_graph(M, Y2, l_whole, l_sess, m_in, n_out, k_tob, n_sess);
+w_seriesv_ser_graph(M, Y2, l_whole, l_sess, m_in, n_out, k_tob, n_sess, 600);
