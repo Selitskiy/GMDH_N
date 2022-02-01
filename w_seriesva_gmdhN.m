@@ -5,8 +5,9 @@ clear all; close all; clc;
 %% Load the data, initialize partition pareameters
 dataFile = 'DJ_01_02_19-01_28_22.csv';%'./wse_data.csv';
 
-M = zeros([806,1]);
-M(1:776) = readmatrix(dataFile);
+%M = zeros([806,1]);
+%M(1:776) = readmatrix(dataFile);
+M = readmatrix(dataFile);
 
 % input dimesion (days)
 m_in = 30;
@@ -193,7 +194,7 @@ end
 
 % Break the whole dataset in training sessions,
 % set training session length
-l_sess = 776;%3*m_in + n_out;%50;
+l_sess = 746;%3*m_in + n_out;%50;
 % the following test period
 l_test = 30;%l_sess;
 
@@ -236,4 +237,4 @@ fprintf('GMDH ANN M in:%d, N out:%d, Sess:%d ,Err: %f\n', m_in, n_out, n_sess, S
 
 %% Error and Series Plot
 %w_series2_err_graph(Y2, Yh2);
-w_seriesv_ser_graph(M, Y2, l_whole, l_sess, m_in, n_out, k_tob, n_sess, 600);
+w_seriesv_ser_graph(M, l_whole, Y2, l_whole, l_sess, m_in, n_out, k_tob, n_sess, 600);
