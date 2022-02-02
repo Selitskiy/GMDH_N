@@ -2,8 +2,19 @@
 clearvars -global;
 clear all; close all; clc;
 
+%% Mem cleanup
+ngpu = gpuDeviceCount();
+for i=1:ngpu
+    reset(gpuDevice(i));
+end
+
 %% Load the data, initialize partition pareameters
+saveDataPrefix = 'nasdaq_';
+save_identNet_fileT = '~/data/ws_van_ident_';
+save_regNet_fileT = '~/data/ws_van_reg_';
+
 dataFile = 'nasdaq_1_3_05-1_28_22.csv';%'./wse_data.csv';
+
 
 Me = readmatrix(dataFile);
 [l_whole_ex, ~] = size(Me); %657
@@ -51,13 +62,20 @@ mb_size = 2^floor(log2(k_ob*n_sess)); %32
 k_hid = m_ine;
 k_hid1 = m_ine + 1;
 k_hid2 = 2*m_ine + 1;
+identNets = cell(n_sess);
 regNets = cell(n_sess);
 
 max_neuro1 = floor(k_hid1 / n_out);
 max_neuro2 = floor(k_hid2 / n_out);
 
-%% Attention net
-aLayers = [
+%% Attention Input Identity net
+% Train or pre-load Identity nets
+
+for i = 1:n_sess
+
+    mb_size = 2^floor(log2(k_ob*i)); %32
+
+    aLayers = [
     featureInputLayer(m_ine)
     fullyConnectedLayer(k_hid1)
     reluLayer
@@ -66,17 +84,36 @@ aLayers = [
     fullyConnectedLayer(n_sess)
     softmaxLayer
     classificationLayer
-];
-agraph = layerGraph(aLayers);
+    ];
+    agraph = layerGraph(aLayers);
 
-sOptionsAttention = trainingOptions('adam', ...
+    sOptionsAttention = trainingOptions('adam', ...
             'ExecutionEnvironment','parallel',...
             'Shuffle', 'every-epoch',...
             'MiniBatchSize', mb_size, ...
             'InitialLearnRate',0.02, ...
             'MaxEpochs',250);
 
-identNet = trainNetwork(XI', C', agraph, sOptionsAttention);
+
+    save_identNet_file = strcat(save_identNet_fileT, saveDataPrefix, int2str(i), '_', int2str(m_in), '_', int2str(n_out), '_', int2str(n_sess), '.mat');
+    if isfile(save_identNet_file)
+        fprintf('Loading Ident net %d from %s\n', i, save_identNet_file);
+        load(save_identNet_file, 'identNet');
+    else
+        clear('identNet');
+    end
+
+    if exist('identNet') == 0
+        fprintf('Training Ident net %d\n', i);
+
+        identNet = trainNetwork(XI(:, 1:k_ob*i)', C(1:k_ob*i)', agraph, sOptionsAttention);
+        
+        save(save_identNet_file, 'identNet');
+    end
+
+    identNets{i} = identNet;
+end
+
 
 %% GMDH parameters 
 
@@ -109,9 +146,19 @@ sOptions2 = trainingOptions('adam', ...
 'InitialLearnRate',0.01, ...
 'MaxEpochs',250);           
 
-%i = 3;
+%% Train or pre-load GMDH
 for i = 1:n_sess
-    %for k = 1:n_out
+
+    save_regNet_file = strcat(save_regNet_fileT, saveDataPrefix, int2str(i), '_', int2str(m_in), '_', int2str(n_out), '_', int2str(n_sess), '.mat');
+    if isfile(save_regNet_file)
+        fprintf('Loading net %d from %s\n', i, save_regNet_file);
+        load(save_regNet_file, 'regNet');
+    else
+        clear('regNet');
+    end
+
+
+    if exist('regNet') == 0
 
     % Start growing GMDH net
     prevLayerName = 'inputFeature';
@@ -188,37 +235,50 @@ for i = 1:n_sess
     fprintf('Training whole GMDH net %d\n', i);
 
     regNet = trainNetwork(X(:,:,i)', Y(:,:,i)', cgraph, sOptionsFinal);
+
+    save(save_regNet_file, 'regNet');
+    end
+
     regNets{i} = regNet;
 
     clear('regressionLayerName');
     clear('regressionLayer');
     clear('cgraph');
     clear('regNet');
-    %end
+
 end
 
 
 %% Test parameters
 
-[l_whole, ~] = size(M); %657
+% Left display margin
+%l_marg = 4100;
+
+% Future session
+%[l_whole, ~] = size(M); %657
+% Last current session
+%l_whole = l_whole_ex;
 
 % Break the whole dataset in training sessions,
 % set training session length
-l_sess = l_whole_ex;%3*m_in + n_out;%50;
-% the following test period
-l_test = 30;%l_sess;
+%l_sess = l_whole_ex-30;
 
-n_sess = floor((l_whole-l_test)/l_sess); %12
+% the following test period
+l_test = 30;
+
+%n_sess = floor((l_whole-l_test)/l_sess);
 
 [X2, Y2, Yh2, Bt, k_tob] = w_seriesv_test_tensors(M, m_in, n_out, l_sess, l_test, n_sess, norm_fl, m_ine, n_oute);
 
+% Left display margin
+l_marg = 1;
 
 %% test
 %i = 1;
 for i = 1:n_sess
     for k = 1:k_tob
 
-        predictClass = classify(identNet, X2(:, k, i)');
+        predictClass = classify(identNets{i}, X2(:, k, i)');
         prClNum = double(predictClass);
         fprintf('IdentityClass Session:%d, Observation:%d, IdentClNum:%d\n', i, k, prClNum);
 
@@ -247,4 +307,5 @@ fprintf('GMDH ANN M in:%d, N out:%d, Sess:%d ,Err: %f\n', m_in, n_out, n_sess, S
 
 %% Error and Series Plot
 %w_series2_err_graph(Y2, Yh2);
-w_seriesv_ser_graph(M, l_whole_ex, Y2, l_whole, l_sess, m_in, n_out, k_tob, n_sess, 4100);
+w_seriesv_ser_graph(M, l_whole_ex, Y2, l_whole, l_sess, m_in, n_out, k_tob, n_sess, l_marg);
+
