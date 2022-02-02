@@ -5,6 +5,7 @@ function [X2, Y2, Yh2, B, k_tob] = w_seriesv_test_tensors(M, m_in, n_out, l_sess
     X2 = ones([m_ine, k_tob, n_sess]);
     Y2 = zeros([n_oute, k_tob, n_sess]);
     Yh2 = zeros([n_oute, k_tob, n_sess]);
+    B = zeros([2, k_tob, n_sess]);
 
     % Re-format test input into session tensor
     for i = 1:n_sess

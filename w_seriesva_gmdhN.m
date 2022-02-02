@@ -3,7 +3,7 @@ clearvars -global;
 clear all; close all; clc;
 
 %% Load the data, initialize partition pareameters
-dataFile = 'NASDAQ_1_2_19-1_28_22.csv';%'./wse_data.csv';
+dataFile = 'nasdaq_1_3_05-1_28_22.csv';%'./wse_data.csv';
 
 Me = readmatrix(dataFile);
 [l_whole_ex, ~] = size(Me); %657
@@ -22,7 +22,7 @@ M(1:l_whole_ex) = Me;
 
 % Limit training area
 %[l_whole, ~] = size(M); %657
-l_whole = 690;
+l_whole = l_whole_ex-m_in-n_out; %690;
 
 % Break the whole dataset in training sessions,
 % set training session length
@@ -44,7 +44,7 @@ norm_fl = 1;
 [X, Y, B, XI, C, k_ob, m_ine, n_oute] = w_seriesva_train_tensors(M, m_in, n_out, l_sess, n_sess, norm_fl);
 n_outv = n_oute - n_out;
 
-mb_size = 2^floor(log2(k_ob)); %32
+mb_size = 2^floor(log2(k_ob*n_sess)); %32
 
 
 % Fit ann into minimal loss function (SSE)
@@ -79,6 +79,9 @@ sOptionsAttention = trainingOptions('adam', ...
 identNet = trainNetwork(XI', C', agraph, sOptionsAttention);
 
 %% GMDH parameters 
+
+mb_size = 2^floor(log2(k_ob)); %32
+
 sOptions = trainingOptions('adam', ...
 'ExecutionEnvironment','parallel',...
 'Shuffle', 'every-epoch',...
@@ -201,7 +204,7 @@ end
 
 % Break the whole dataset in training sessions,
 % set training session length
-l_sess = 748;%3*m_in + n_out;%50;
+l_sess = l_whole_ex;%3*m_in + n_out;%50;
 % the following test period
 l_test = 30;%l_sess;
 
@@ -244,4 +247,4 @@ fprintf('GMDH ANN M in:%d, N out:%d, Sess:%d ,Err: %f\n', m_in, n_out, n_sess, S
 
 %% Error and Series Plot
 %w_series2_err_graph(Y2, Yh2);
-w_seriesv_ser_graph(M, l_whole_ex, Y2, l_whole, l_sess, m_in, n_out, k_tob, n_sess, 600);
+w_seriesv_ser_graph(M, l_whole_ex, Y2, l_whole, l_sess, m_in, n_out, k_tob, n_sess, 4100);
