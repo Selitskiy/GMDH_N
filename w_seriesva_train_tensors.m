@@ -2,7 +2,7 @@ function [X, Y, B, XI, C, k_ob, m_ine, n_oute] = w_seriesva_train_tensors(M, m_i
 
     % Number of observations in a session (training label(sequence) does
     % not touch test period
-    k_ob = l_sess - m_in;
+    k_ob = l_sess - m_in + 1;
 
     m_ine = 2*m_in-1;
     n_oute = 2*n_out-1;

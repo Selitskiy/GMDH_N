@@ -9,15 +9,27 @@ for i=1:ngpu
 end
 
 %% Load the data, initialize partition pareameters
-saveDataPrefix = 'nasdaq_';
+%saveDataPrefix = 'nasdaq3520_';
+%saveDataPrefix = 'dj4020_';
+saveDataPrefix = 'nikkey4030_';
+%saveDataPrefix = 'AirPassengers1_114_30_';
+%saveDataPrefix = 'sun_1_';
+%saveDataPrefix = 'SN_y_tot_V2.0_spots_4030_';
+
 save_identNet_fileT = '~/data/ws_van_ident_';
 save_regNet_fileT = '~/data/ws_van_reg_';
 
-dataFile = 'nasdaq_1_3_05-1_28_22.csv';%'./wse_data.csv';
+%dataFile = 'nasdaq_1_3_05-1_28_22.csv';%'./wse_data.csv';
+%dataFile = 'dj_1_3_05-1_28_22.csv';
+dataFile = 'nikkei_1_4_05_1_31_22.csv';
+
+%dataFile = 'AirPassengers1.csv';
+%dataFile = 'sun_1.csv';
+%dataFile = 'SN_y_tot_V2.0_spots.csv';
 
 
 Me = readmatrix(dataFile);
-[l_whole_ex, ~] = size(Me); %657
+[l_whole_ex, ~] = size(Me);
 
 
 % input dimesion (days)
@@ -25,23 +37,26 @@ m_in = 30;
 % Try different output dimensions (days)
 n_out = 30;
 
-% Allocate place for wuture
-M = zeros([l_whole_ex+n_out, 1]);
-M(1:l_whole_ex) = Me;
-% Or no future
-%M = Me;
+% Allocate place for future
+%M = zeros([l_whole_ex+n_out, 1]);
+%M(1:l_whole_ex) = Me;
+% Leave space for last training label
+%l_whole = l_whole_ex-m_in;
 
-% Limit training area
-%[l_whole, ~] = size(M); %657
-l_whole = l_whole_ex-m_in-n_out; %690;
+% Or no future
+M = Me;
+% Leave space for last training label
+l_whole = l_whole_ex-m_in-n_out;
 
 % Break the whole dataset in training sessions,
 % set training session length
 l_sess = 2*m_in;
-% the following test period
-l_test = 0;%l_sess;
 
-n_sess = floor((l_whole-l_test)/l_sess); %12
+% Only for 1 whole session (otherwise, comment out)
+%l_sess = l_whole;
+
+% No training n_out touches test m_in
+n_sess = floor((l_whole)/l_sess);%floor((l_whole-l_test)/l_sess);
 
 
 % Normalization flag
@@ -55,13 +70,12 @@ norm_fl = 1;
 [X, Y, B, XI, C, k_ob, m_ine, n_oute] = w_seriesva_train_tensors(M, m_in, n_out, l_sess, n_sess, norm_fl);
 n_outv = n_oute - n_out;
 
-mb_size = 2^floor(log2(k_ob*n_sess)); %32
-
 
 % Fit ann into minimal loss function (SSE)
-k_hid = m_ine;
-k_hid1 = m_ine + 1;
-k_hid2 = 2*m_ine + 1;
+mult = 1;
+k_hid = floor(mult * m_ine);
+k_hid1 = floor(mult * (m_ine + 1));
+k_hid2 = floor(mult * (2*m_ine + 1));
 identNets = cell(n_sess);
 regNets = cell(n_sess);
 
@@ -173,7 +187,7 @@ for i = 1:n_sess
     % Start from first GMDH layer
     ll = 1;
     % Target accuracy
-    accTarget = 0.3;
+    accTarget = 0.4;
     % Stale accuracy chage threshol
     dAccMin = 0.001;
     % Maximal polinomial length (number of chained gmdh layer) 
@@ -199,7 +213,7 @@ for i = 1:n_sess
         % Build second GMDH layer
         ll = ll + 1;
         % Target accuracy
-        accTarget = 0.15; %0.015;% 0.05; 0.08;
+        accTarget = 0.3; %0.015;% 0.05; 0.08;
         % Stale accuracy chage threshol
         dAccMin = 0.001;
         % Maximal polinomial length (number of chained gmdh layer) 
@@ -248,37 +262,48 @@ for i = 1:n_sess
 
 end
 
+%% Test parameters 
+% the test input period
+l_test = m_in;
 
-%% Test parameters
+% Test from particular training session
+sess_off = 0;
+% additional offset after training sessions (usually for the future forecast)
+offset = 0;
+
+% Left display margin
+l_marg = 1;
+
+%% Test parameters for one last session
 
 % Left display margin
 %l_marg = 4100;
 
 % Future session
-%[l_whole, ~] = size(M); %657
+%M = zeros([l_whole_ex+n_out, 1]);
+%M(1:l_whole_ex) = Me;
+%[l_whole, ~] = size(M);
+
 % Last current session
 %l_whole = l_whole_ex;
 
-% Break the whole dataset in training sessions,
-% set training session length
-%l_sess = l_whole_ex-30;
+% Fit last testing session at the end of data
+%offset = l_whole - n_sess*l_sess - m_in - n_out;
 
-% the following test period
-l_test = 30;
+% Test from particular training session
+%sess_off = n_sess-1;
 
-%n_sess = floor((l_whole-l_test)/l_sess);
+%% For whole-through test, comment out secion above
 
-[X2, Y2, Yh2, Bt, k_tob] = w_seriesv_test_tensors(M, m_in, n_out, l_sess, l_test, n_sess, norm_fl, m_ine, n_oute);
+[X2, Y2, Yh2, Bt, k_tob] = w_seriesva_test_tensors(M, m_in, n_out, l_sess, l_test, n_sess, sess_off, offset, norm_fl, m_ine, n_oute, 0);
 
-% Left display margin
-l_marg = 1;
 
 %% test
 %i = 1;
-for i = 1:n_sess
+for i = 1:n_sess-sess_off
     for k = 1:k_tob
 
-        predictClass = classify(identNets{i}, X2(:, k, i)');
+        predictClass = classify(identNets{i+sess_off}, X2(:, k, i)');
         prClNum = double(predictClass);
         fprintf('IdentityClass Session:%d, Observation:%d, IdentClNum:%d\n', i, k, prClNum);
 
@@ -291,7 +316,7 @@ end
     
 %% re-scale in observation bounds
 if(norm_fl)
-    for i = 1:n_sess
+    for i = 1:n_sess-sess_off
         for j = 1:k_tob
             Y2(:, j, i) = w_series2_rescale(Y2(:, j, i), Bt(1,j,i), Bt(2,j,i));
             Yh2(:, j, i) = w_series2_rescale(Yh2(:, j, i), Bt(1,j,i), Bt(2,j,i));
@@ -307,5 +332,5 @@ fprintf('GMDH ANN M in:%d, N out:%d, Sess:%d ,Err: %f\n', m_in, n_out, n_sess, S
 
 %% Error and Series Plot
 %w_series2_err_graph(Y2, Yh2);
-w_seriesv_ser_graph(M, l_whole_ex, Y2, l_whole, l_sess, m_in, n_out, k_tob, n_sess, l_marg);
+w_seriesva_ser_graph(M, l_whole_ex, Y2, l_whole, l_sess, m_in, n_out, k_tob, n_sess, sess_off, offset, l_marg);
 
