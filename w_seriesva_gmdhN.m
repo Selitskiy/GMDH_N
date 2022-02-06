@@ -11,7 +11,8 @@ end
 %% Load the data, initialize partition pareameters
 %saveDataPrefix = 'nasdaq3520_';
 %saveDataPrefix = 'dj4020_';
-saveDataPrefix = 'nikkey4030_';
+%saveDataPrefix = 'nikkey4030_';
+saveDataPrefix = 'dax4030_';
 %saveDataPrefix = 'AirPassengers1_114_30_';
 %saveDataPrefix = 'sun_1_';
 %saveDataPrefix = 'SN_y_tot_V2.0_spots_4030_';
@@ -21,7 +22,8 @@ save_regNet_fileT = '~/data/ws_van_reg_';
 
 %dataFile = 'nasdaq_1_3_05-1_28_22.csv';%'./wse_data.csv';
 %dataFile = 'dj_1_3_05-1_28_22.csv';
-dataFile = 'nikkei_1_4_05_1_31_22.csv';
+%dataFile = 'nikkei_1_4_05_1_31_22.csv';
+dataFile = 'dax_1_3_05_1_31_22.csv';
 
 %dataFile = 'AirPassengers1.csv';
 %dataFile = 'sun_1.csv';
@@ -110,6 +112,7 @@ for i = 1:n_sess
 
 
     save_identNet_file = strcat(save_identNet_fileT, saveDataPrefix, int2str(i), '_', int2str(m_in), '_', int2str(n_out), '_', int2str(n_sess), '.mat');
+    %save_identNet_file = strcat(save_identNet_fileT, saveDataPrefix, int2str(i), '_', int2str(m_in), '_', int2str(n_out), '_69', '.mat');
     if isfile(save_identNet_file)
         fprintf('Loading Ident net %d from %s\n', i, save_identNet_file);
         load(save_identNet_file, 'identNet');
@@ -164,6 +167,7 @@ sOptions2 = trainingOptions('adam', ...
 for i = 1:n_sess
 
     save_regNet_file = strcat(save_regNet_fileT, saveDataPrefix, int2str(i), '_', int2str(m_in), '_', int2str(n_out), '_', int2str(n_sess), '.mat');
+    %save_regNet_file = strcat(save_regNet_fileT, saveDataPrefix, int2str(i), '_', int2str(m_in), '_', int2str(n_out), '_69', '.mat');
     if isfile(save_regNet_file)
         fprintf('Loading net %d from %s\n', i, save_regNet_file);
         load(save_regNet_file, 'regNet');
@@ -294,13 +298,15 @@ l_marg = 1;
 %sess_off = n_sess-1;
 
 %% For whole-through test, comment out secion above
+% Number of training sessions with following full-size test sessions 
+t_sess = floor((l_whole - m_in - n_out) / l_sess);
 
-[X2, Y2, Yh2, Bt, k_tob] = w_seriesva_test_tensors(M, m_in, n_out, l_sess, l_test, n_sess, sess_off, offset, norm_fl, m_ine, n_oute, 0);
+[X2, Y2, Yh2, Bt, k_tob] = w_seriesva_test_tensors(M, m_in, n_out, l_sess, l_test, t_sess, sess_off, offset, norm_fl, m_ine, n_oute, 0);
 
 
 %% test
 %i = 1;
-for i = 1:n_sess-sess_off
+for i = 1:t_sess-sess_off
     for k = 1:k_tob
 
         predictClass = classify(identNets{i+sess_off}, X2(:, k, i)');
@@ -316,7 +322,7 @@ end
     
 %% re-scale in observation bounds
 if(norm_fl)
-    for i = 1:n_sess-sess_off
+    for i = 1:t_sess-sess_off
         for j = 1:k_tob
             Y2(:, j, i) = w_series2_rescale(Y2(:, j, i), Bt(1,j,i), Bt(2,j,i));
             Yh2(:, j, i) = w_series2_rescale(Yh2(:, j, i), Bt(1,j,i), Bt(2,j,i));
@@ -328,9 +334,9 @@ end
 %% Calculate errors
 [S2, ma_err, sess_ma_idx, ob_ma_idx, mi_err, sess_mi_idx, ob_mi_idx] = w_seriesv_calc_err(Y2, Yh2, n_out); 
 
-fprintf('GMDH ANN M in:%d, N out:%d, Sess:%d ,Err: %f\n', m_in, n_out, n_sess, S2);
+fprintf('GMDH ANN M in:%d, N out:%d, Sess:%d ,Err: %f\n', m_in, n_out, t_sess, S2);
 
 %% Error and Series Plot
 %w_series2_err_graph(Y2, Yh2);
-w_seriesva_ser_graph(M, l_whole_ex, Y2, l_whole, l_sess, m_in, n_out, k_tob, n_sess, sess_off, offset, l_marg);
+w_seriesva_ser_graph(M, l_whole_ex, Y2, l_whole, l_sess, m_in, n_out, k_tob, t_sess, sess_off, offset, l_marg);
 

@@ -1,7 +1,7 @@
-function w_seriesva_ser_graph(M, l_m, Y2, l_y, l_sess, m_in, n_out, k_tob, n_sess, sess_off, offset, k_start)
+function w_seriesva_ser_graph(M, l_m, Y2, l_y, l_sess, m_in, n_out, k_tob, t_sess, sess_off, offset, k_start)
     % Re-format sessions back into through array
     M2 = M;
-    for i = 1:n_sess-sess_off
+    for i = 1:t_sess-sess_off
         for j = 1:k_tob
             %idx = i*l_sess - m_in + (j-1)*n_out + 1;
             idx = (i+sess_off)*l_sess + (j-1)*n_out + 1 + offset;
