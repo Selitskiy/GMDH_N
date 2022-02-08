@@ -16,7 +16,9 @@ end
 %saveDataPrefix = 'AirPassengers1_114_30_';
 %saveDataPrefix = 'sun_1_';
 %saveDataPrefix = 'SN_y_tot_V2.0_spots_4030_';
-saveDataPrefix = '7203toyota4030_';
+%saveDataPrefix = '7203toyota4030_';
+%saveDataPrefix = 'nvidia4030_';
+saveDataPrefix = 'tsla4030_';
 
 save_identNet_fileT = '~/data/ws_van_ident_';
 save_regNet_fileT = '~/data/ws_van_reg_';
@@ -25,7 +27,9 @@ save_regNet_fileT = '~/data/ws_van_reg_';
 %dataFile = 'dj_1_3_05-1_28_22.csv';
 %dataFile = 'nikkei_1_4_05_1_31_22.csv';
 %dataFile = 'dax_1_3_05_1_31_22.csv';
-dataFile = '7203toyota_1_4_05_1_31_22';
+%dataFile = '7203toyota_1_4_05_1_31_22.csv';
+%dataFile = 'nvidia_1_3_05_1_28_22.csv';
+dataFile = 'tsla_6_30_10_1_28_22.csv';
 
 %dataFile = 'AirPassengers1.csv';
 %dataFile = 'sun_1.csv';
@@ -77,14 +81,14 @@ n_outv = n_oute - n_out;
 
 % Fit ann into minimal loss function (SSE)
 mult = 1;
-k_hid = floor(mult * m_ine);
+%k_hid = floor(mult * m_ine);
 k_hid1 = floor(mult * (m_ine + 1));
 k_hid2 = floor(mult * (2*m_ine + 1));
 identNets = cell(n_sess);
 regNets = cell(n_sess);
 
-max_neuro1 = floor(k_hid1 / n_out);
-max_neuro2 = floor(k_hid2 / n_out);
+%max_neuro1 = floor(k_hid1 / n_out);
+%max_neuro2 = floor(k_hid2 / n_out);
 
 %% Attention Input Identity net
 % Train or pre-load Identity nets
@@ -114,7 +118,7 @@ for i = 1:n_sess
 
 
     save_identNet_file = strcat(save_identNet_fileT, saveDataPrefix, int2str(i), '_', int2str(m_in), '_', int2str(n_out), '_', int2str(n_sess), '.mat');
-    %save_identNet_file = strcat(save_identNet_fileT, saveDataPrefix, int2str(i), '_', int2str(m_in), '_', int2str(n_out), '_71', '.mat');
+    %save_identNet_file = strcat(save_identNet_fileT, saveDataPrefix, int2str(i), '_', int2str(m_in), '_', int2str(n_out), '_68', '.mat');
     if isfile(save_identNet_file)
         fprintf('Loading Ident net %d from %s\n', i, save_identNet_file);
         load(save_identNet_file, 'identNet');
@@ -134,42 +138,16 @@ for i = 1:n_sess
 end
 
 
-%% GMDH parameters 
+%% regNet parameters 
 
 mb_size = 2^floor(log2(k_ob)); %32
+       
 
-sOptions = trainingOptions('adam', ...
-'ExecutionEnvironment','parallel',...
-'Shuffle', 'every-epoch',...
-'MiniBatchSize', mb_size, ...
-'InitialLearnRate',0.02, ...
-'MaxEpochs',500);%, ...
-            %'Verbose',true, ...
-            %'Plots','training-progress');
-    
-            %'LearnRateSchedule', 'piecewise',...
-            %'LearnRateDropPeriod', 100,...
-            %'LearnRateDropFactor', 0.99,...
-
-sOptions2 = trainingOptions('adam', ...
-'ExecutionEnvironment','parallel',...
-'Shuffle', 'every-epoch',...
-'MiniBatchSize', mb_size, ...
-'InitialLearnRate',0.03, ...
-'MaxEpochs',1000);
-
- sOptionsFinal = trainingOptions('adam', ...
-'ExecutionEnvironment','parallel',...
-'Shuffle', 'every-epoch',...
-'MiniBatchSize', mb_size, ...
-'InitialLearnRate',0.01, ...
-'MaxEpochs',250);           
-
-%% Train or pre-load GMDH
+%% Train or pre-load regNets
 for i = 1:n_sess
 
     save_regNet_file = strcat(save_regNet_fileT, saveDataPrefix, int2str(i), '_', int2str(m_in), '_', int2str(n_out), '_', int2str(n_sess), '.mat');
-    %save_regNet_file = strcat(save_regNet_fileT, saveDataPrefix, int2str(i), '_', int2str(m_in), '_', int2str(n_out), '_71', '.mat');
+    %save_regNet_file = strcat(save_regNet_fileT, saveDataPrefix, int2str(i), '_', int2str(m_in), '_', int2str(n_out), '_68', '.mat');
     if isfile(save_regNet_file)
         fprintf('Loading net %d from %s\n', i, save_regNet_file);
         load(save_regNet_file, 'regNet');
@@ -180,89 +158,15 @@ for i = 1:n_sess
 
     if exist('regNet') == 0
 
-    % Start growing GMDH net
-    prevLayerName = 'inputFeature';
-    oLayers = [
-        featureInputLayer(m_ine, 'Name', prevLayerName)
-    ];
-    cgraph = layerGraph(oLayers);
+        [regNet, cgraph] = makeGMDHNet(i, m_ine, n_oute, n_out, k_hid1, k_hid2, mb_size, X, Y);
 
-
-    fprintf('Training net %d\n', i);
-
-    % Start from first GMDH layer
-    ll = 1;
-    % Target accuracy
-    accTarget = 0.4;
-    % Stale accuracy chage threshol
-    dAccMin = 0.001;
-    % Maximal polinomial length (number of chained gmdh layer) 
-    lMax = 3;
-
-    [cgraph, regNet, ll, k_hid1_real, curGMDHLayerName, curGMDHRegressionName] =... 
-        gmdhLayerGrowN(cgraph, prevLayerName, sOptions, X, Y, m_ine, i, n_oute, ll, accTarget, max_neuro1, 0, dAccMin, lMax);
-    prevLayerName = curGMDHLayerName;
-
-    if(k_hid1_real > 1)
-        % Sum all polynomial candidates into last fully connected layuer and use
-        % standard Regression instead of GMDH
-        fullyConnectdMidLayerName = 'fullyConnectedLayerMid';
-        fullyConnectdMidLayer = fullyConnectedLayer(k_hid1_real, 'Name', fullyConnectdMidLayerName);
-        cgraph = addLayers(cgraph, fullyConnectdMidLayer);
-        cgraph = connectLayers(cgraph, curGMDHLayerName, fullyConnectdMidLayerName);
-
-        prevLayerName = fullyConnectdMidLayerName;
-
-
-        fprintf('Training 2 GMDH net %d\n', i);
-
-        % Build second GMDH layer
-        ll = ll + 1;
-        % Target accuracy
-        accTarget = 0.3; %0.015;% 0.05; 0.08;
-        % Stale accuracy chage threshol
-        dAccMin = 0.001;
-        % Maximal polinomial length (number of chained gmdh layer) 
-        lMax = 3;
-
-        [cgraph, regNet, ll, k_hid2_real, curGMDHLayerName, curGMDHRegressionName] =... 
-            gmdhLayerGrowN(cgraph, prevLayerName, sOptions2, X, Y, k_hid1_real, i, n_oute, ll, accTarget, max_neuro2, 0, dAccMin, lMax);
-        prevLayerName = curGMDHLayerName;
-
-        if(k_hid2_real > 1)
-            fullyConnectdLastLayerName = 'fullyConnectedLayerLast';
-            fullyConnectdLastLayer = fullyConnectedLayer(k_hid2_real, 'Name', fullyConnectdLastLayerName);
-            cgraph = addLayers(cgraph, fullyConnectdLastLayer);
-            cgraph = connectLayers(cgraph, curGMDHLayerName, fullyConnectdLastLayerName);
-
-            fullyConnectedOutLayerName = 'fcOut';
-            fullyConnectedOutLayer = fullyConnectedLayer(n_oute,'Name',fullyConnectedOutLayerName);
-            cgraph = addLayers(cgraph, fullyConnectedOutLayer);
-            cgraph = connectLayers(cgraph, fullyConnectdLastLayerName, fullyConnectedOutLayerName);
-
-            prevLayerName = fullyConnectedOutLayerName;
-        end
-    end
-
-    regressionLayerName = "regOut";
-    %regressionLayer = regressionLayer('Name', regressionLayerName);
-    regressionLayer = vRegression(regressionLayerName, n_outv);
-
-    cgraph = replaceLayer(cgraph, curGMDHRegressionName, regressionLayer);
-    cgraph = connectLayers(cgraph, prevLayerName, regressionLayerName);
-
-
-    fprintf('Training whole GMDH net %d\n', i);
-
-    regNet = trainNetwork(X(:,:,i)', Y(:,:,i)', cgraph, sOptionsFinal);
-
-    save(save_regNet_file, 'regNet');
+        save(save_regNet_file, 'regNet');
     end
 
     regNets{i} = regNet;
 
-    clear('regressionLayerName');
-    clear('regressionLayer');
+    %clear('regressionLayerName');
+    %clear('regressionLayer');
     clear('cgraph');
     clear('regNet');
 
