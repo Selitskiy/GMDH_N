@@ -1,10 +1,11 @@
-function [X2, Y2, Yh2, B, k_tob] = w_series4_test_tensors(M, m_in, n_out, l_sess, l_test, n_sess, sess_off, offset, norm_fl, k_tob)
+function [X2, Y2s, Y2, Yh2, B, k_tob] = w_series4_test_tensors(M, m_in, n_out, l_sess, l_test, n_sess, sess_off, offset, norm_fl, k_tob)
     %% Test regression ANN
     if(k_tob == 0)
         k_tob = ceil(l_sess/n_out);
     end
 
     X2 = ones([m_in, k_tob, n_sess-sess_off]);
+    Y2s = zeros([m_in, k_tob, n_sess-sess_off]);
     Y2 = zeros([n_out, k_tob, n_sess-sess_off]);
     Yh2 = zeros([n_out, k_tob, n_sess-sess_off]);
     B = zeros([2, k_tob, n_sess-sess_off]);

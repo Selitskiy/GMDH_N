@@ -13,12 +13,14 @@ end
 %saveDataPrefix = 'dj4020_';
 %saveDataPrefix = 'nikkey4030_';
 %saveDataPrefix = 'dax4030_';
-%saveDataPrefix = 'AirPassengers1_114_30_';
-%saveDataPrefix = 'sun_1_';
-%saveDataPrefix = 'SN_y_tot_V2.0_spots_4030_';
+
 %saveDataPrefix = '7203toyota4030_';
 %saveDataPrefix = 'nvidia4030_';
 saveDataPrefix = 'tsla4030_';
+
+%saveDataPrefix = 'AirPassengers1_114_30_';
+%saveDataPrefix = 'sun_1_';
+%saveDataPrefix = 'SN_y_tot_V2.0_spots_4030_';
 
 save_identNet_fileT = '~/data/ws_van_ident_';
 save_regNet_fileT = '~/data/ws_van_reg_';
@@ -27,6 +29,7 @@ save_regNet_fileT = '~/data/ws_van_reg_';
 %dataFile = 'dj_1_3_05-1_28_22.csv';
 %dataFile = 'nikkei_1_4_05_1_31_22.csv';
 %dataFile = 'dax_1_3_05_1_31_22.csv';
+
 %dataFile = '7203toyota_1_4_05_1_31_22.csv';
 %dataFile = 'nvidia_1_3_05_1_28_22.csv';
 dataFile = 'tsla_6_30_10_1_28_22.csv';
@@ -87,8 +90,6 @@ k_hid2 = floor(mult * (2*m_ine + 1));
 identNets = cell(n_sess);
 regNets = cell(n_sess);
 
-%max_neuro1 = floor(k_hid1 / n_out);
-%max_neuro2 = floor(k_hid2 / n_out);
 
 %% Attention Input Identity net
 % Train or pre-load Identity nets
@@ -140,6 +141,9 @@ end
 
 %% regNet parameters 
 
+%modelName = 'relu';
+modelName = 'gmdh';
+
 mb_size = 2^floor(log2(k_ob)); %32
        
 
@@ -158,7 +162,7 @@ for i = 1:n_sess
 
     if exist('regNet') == 0
 
-        [regNet, cgraph] = makeGMDHNet(i, m_ine, n_oute, n_out, k_hid1, k_hid2, mb_size, X, Y);
+        [regNet, cgraph] = makeGMDHvNet(i, m_ine, n_oute, n_out, k_hid1, k_hid2, mb_size, X, Y);
 
         save(save_regNet_file, 'regNet');
     end
@@ -184,10 +188,14 @@ offset = 0;
 % Left display margin
 l_marg = 1;
 
+% Undefine number observations in test session
+k_tob = 0;
+
 %% Test parameters for one last session
 
 % Left display margin
-%l_marg = 4100;
+%l_marg = 2000;%4100;
+
 
 % Future session
 %M = zeros([l_whole_ex+n_out, 1]);
@@ -197,17 +205,22 @@ l_marg = 1;
 % Last current session
 %l_whole = l_whole_ex;
 
+
 % Fit last testing session at the end of data
 %offset = l_whole - n_sess*l_sess - m_in - n_out;
+%k_tob = 1;
 
 % Test from particular training session
 %sess_off = n_sess-1;
 
 %% For whole-through test, comment out secion above
 % Number of training sessions with following full-size test sessions 
-t_sess = floor((l_whole - m_in - n_out) / l_sess);
+t_sess = floor((l_whole - m_in - n_out - offset) / l_sess);
 
-[X2, Y2, Yh2, Bt, k_tob] = w_seriesva_test_tensors(M, m_in, n_out, l_sess, l_test, t_sess, sess_off, offset, norm_fl, m_ine, n_oute, 0);
+% Test from particular test session
+%sess_off = t_sess-1;
+
+[X2, Y2, Yh2, Bt, k_tob] = w_seriesva_test_tensors(M, m_in, n_out, l_sess, l_test, t_sess, sess_off, offset, norm_fl, m_ine, n_oute, k_tob);
 
 
 %% test
@@ -240,7 +253,7 @@ end
 %% Calculate errors
 [S2, ma_err, sess_ma_idx, ob_ma_idx, mi_err, sess_mi_idx, ob_mi_idx] = w_seriesv_calc_err(Y2, Yh2, n_out); 
 
-fprintf('GMDH ANN M in:%d, N out:%d, Sess:%d ,Err: %f\n', m_in, n_out, t_sess, S2);
+fprintf('%s, dataFN %s, SaveFN %s, M_in:%d, N_out:%d, Tr_sess %d, Ts_ess:%d, Err: %f\n', modelName, dataFile, saveDataPrefix, m_in, n_out, n_sess, t_sess, S2);
 
 %% Error and Series Plot
 %w_series2_err_graph(Y2, Yh2);

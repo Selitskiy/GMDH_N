@@ -1,4 +1,4 @@
-function [X, Y, B, k_ob] = w_series3_train_tensors(M, m_in, n_out, l_sess, n_sess, norm_fl)
+function [X, Ys, Y, B, k_ob] = w_series3_train_tensors(M, m_in, n_out, l_sess, n_sess, norm_fl)
 
     % Number of observations in a session (training label(sequence) does
     % not touch test period
@@ -7,6 +7,7 @@ function [X, Y, B, k_ob] = w_series3_train_tensors(M, m_in, n_out, l_sess, n_ses
     % Re-format input into session tensor
     % ('ones' (not 'zeros') for X are for bias 'trick'
     X = zeros([m_in, k_ob, n_sess]);
+    Ys = zeros([m_in, k_ob, n_sess]);
     Y = zeros([n_out, k_ob, n_sess]);
     B = zeros([2, k_ob, n_sess]);
 
@@ -22,6 +23,12 @@ function [X, Y, B, k_ob] = w_series3_train_tensors(M, m_in, n_out, l_sess, n_ses
                 Mx = w_series2_scale(Mx, B(1,j,i), B(2,j,i));
             end
             X(1:m_in, j, i) = Mx(:);
+
+            My = M(idx+1:idx+m_in);
+            if(norm_fl)
+                My = w_series2_scale(My, B(1,j,i), B(2,j,i));
+            end
+            Ys(:, j, i) = My(:);
 
             My = M(idx+m_in:idx+m_in+n_out-1);
             if(norm_fl)

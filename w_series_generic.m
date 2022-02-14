@@ -10,23 +10,28 @@ end
 
 %% Load the data, initialize partition pareameters
 %saveDataPrefix = 'nasdaq3520_';
-saveDataPrefix = 'dj4020_';
+%saveDataPrefix = 'dj4020_';
 %saveDataPrefix = 'nikkey4030_';
-%saveDataPrefix = 'dax4030_';
+saveDataPrefix = 'dax4030_';
+
+%saveDataPrefix = '7203toyota_';
+%saveDataPrefix = 'nvidia_';
+%saveDataPrefix = 'tsla4030_';
+
 %saveDataPrefix = 'AirPassengers1_114_30_';
 %saveDataPrefix = 'sun_1_';
 %saveDataPrefix = 'SN_y_tot_V2.0_spots_4030_';
-%saveDataPrefix = '7203toyota_';
-%saveDataPrefix = 'nvidia_';
 
-save_regNet_fileT = '~/data/ws_relu_';
+save_regNet_fileT = '~/data/ws_';
 
-dataFile = 'nasdaq_1_3_05-1_28_22.csv';%'./wse_data.csv';
+%dataFile = 'nasdaq_1_3_05-1_28_22.csv';%'./wse_data.csv';
 %dataFile = 'dj_1_3_05-1_28_22.csv';
 %dataFile = 'nikkei_1_4_05_1_31_22.csv';
-%dataFile = 'dax_1_3_05_1_31_22.csv';
+dataFile = 'dax_1_3_05_1_31_22.csv';
+
 %dataFile = '7203toyota_1_4_05_1_31_22';
 %dataFile = 'nvidia_1_3_05_1_28_22';
+%dataFile = 'tsla_6_30_10_1_28_22.csv';
 
 %dataFile = 'AirPassengers1.csv';
 %dataFile = 'sun_1.csv';
@@ -72,7 +77,7 @@ norm_fl = 1;
 % length l_sess (n_sess of them), and min-max boundaries B for each observation, 
 % such that number of observations in a session, including training label sequences
 % do not touch test period
-[X, Y, B, k_ob] = w_series3_train_tensors(M, m_in, n_out, l_sess, n_sess, norm_fl);
+[X, Ys, Y, B, k_ob] = w_series3_train_tensors(M, m_in, n_out, l_sess, n_sess, norm_fl);
 
 
 % Fit ann into minimal loss function (SSE)
@@ -83,7 +88,9 @@ k_hid2 = floor(mult * (2*m_in + 1));
 regNets = cell(n_sess);
 
 
-%% regNet parameters 
+%% regNet parameters
+modelName = 'lstm_seq';
+%modelName = 'gmdh';
 
 mb_size = 2^floor(log2(k_ob)); %32
        
@@ -91,8 +98,8 @@ mb_size = 2^floor(log2(k_ob)); %32
 %% Train or pre-load regNets
 for i = 1:n_sess
 
-    save_regNet_file = strcat(save_regNet_fileT, saveDataPrefix, int2str(i), '_', int2str(m_in), '_', int2str(n_out), '_', int2str(n_sess), '.mat');
-    %save_regNet_file = strcat(save_regNet_fileT, saveDataPrefix, int2str(i), '_', int2str(m_in), '_', int2str(n_out), '_71', '.mat');
+    save_regNet_file = strcat(save_regNet_fileT, modelName, '_', saveDataPrefix, int2str(i), '_', int2str(m_in), '_', int2str(n_out), '_', int2str(n_sess), '.mat');
+    %save_regNet_file = strcat(save_regNet_fileT, modelName, '_', saveDataPrefix, int2str(i), '_', int2str(m_in), '_', int2str(n_out), '_71', '.mat');
     if isfile(save_regNet_file)
         fprintf('Loading net %d from %s\n', i, save_regNet_file);
         load(save_regNet_file, 'regNet');
@@ -103,7 +110,11 @@ for i = 1:n_sess
 
     if exist('regNet') == 0
 
-        regNet = makeReLUNet(i, m_in, n_out, k_hid1, k_hid2, mb_size, X, Y);
+        %regNet = makeANNNet(i, m_in, n_out, k_hid1, k_hid2, mb_size, X, Y);
+        %regNet = makeReLUNet(i, m_in, n_out, k_hid1, k_hid2, mb_size, X, Y);
+        %regNet = makeTanhNet(i, m_in, n_out, k_hid1, k_hid2, mb_size, X, Y);
+        regNet = makeLSTMSeqNet(i, m_in, n_out, k_hid1, k_hid2, mb_size, X, Y);
+        %regNet = makeGMDHNet(i, m_in, n_out, k_hid1, k_hid2, mb_size, X, Y);
 
         save(save_regNet_file, 'regNet');
     end
@@ -150,14 +161,40 @@ l_marg = 1;
 % Number of training sessions with following full-size test sessions 
 t_sess = floor((l_whole - m_in - n_out) / l_sess);
 
-[X2, Y2, Yh2, Bt, k_tob] = w_series4_test_tensors(M, m_in, n_out, l_sess, l_test, t_sess, sess_off, offset, norm_fl, 0);
+[X2, Y2s, Y2, Yh2, Bt, k_tob] = w_series4_test_tensors(M, m_in, n_out, l_sess, l_test, t_sess, sess_off, offset, norm_fl, 0);
 
 
 %% test
-for i = 1:t_sess-sess_off
-        predictedScores = predict(regNets{i}, X2(:, :, i)');
-        Y2(:, :, i) = predictedScores';
-end
+%for i = 1:t_sess-sess_off
+%        predictedScores = predict(regNets{i}, X2(:, :, i)');
+%        Y2(:, :, i) = predictedScores';
+%end
+
+    % LSTM Seq test
+    for i = 1:t_sess-sess_off
+        
+        % Now feeding test data
+        for j = 1:k_tob
+            lstmNet = resetState(regNets{i});
+            % Trick - go through all input sequence to get the first next
+            % prediction outside the seqence, discarding intermediate
+            % predictions
+            %or k = 1:m_in
+            %    [lstmNet, Y2(1, j, i)] = predictAndUpdateState(lstmNet, X2(k, j, i));
+            %end
+            [lstmNet, Y2s(:, j, i)] = predictAndUpdateState(lstmNet, X2(:, j, i)');
+            Y2(1, j, i) = Y2s(end, j, i);
+
+            % Continue predicting further output points based on previous
+            % predicvtion
+            for l = 2:n_out
+                %Y2s(1:m_in-l+1, j, i) = X2(l:end, j, i);
+                [lstmNet, Y2s(:, j, i)] = predictAndUpdateState(lstmNet, Y2s(:, j, i)');
+                Y2(l, j, i) = Y2s(end, j, i);
+            end
+
+        end
+    end
 
 
 %% re-scale in observation bounds
@@ -174,7 +211,7 @@ end
 %% Calculate errors
 [S2, ma_err, sess_ma_idx, ob_ma_idx, mi_err, sess_mi_idx, ob_mi_idx] = w_seriesv_calc_err(Y2, Yh2, n_out); 
 
-fprintf('GMDH ANN M in:%d, N out:%d, Sess:%d ,Err: %f\n', m_in, n_out, t_sess, S2);
+fprintf('%s, dataFN %s, M_in:%d, N_out:%d, Tr_sess:%d, Ts_sess:%d, Err: %f\n', modelName, dataFile, m_in, n_out, n_sess, t_sess, S2);
 
 %% Error and Series Plot
 %w_series2_err_graph(Y2, Yh2);

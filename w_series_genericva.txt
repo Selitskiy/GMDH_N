@@ -1,0 +1,24 @@
+gmdh, dataFN nasdaq_1_3_05-1_28_22.csv, SaveFN nasdaq3520_, M_in:30, N_out:30, Tr_sess 70, Ts_ess:69, Err: 0.044345
+gmdh, dataFN dj_1_3_05-1_28_22.csv, SaveFN dj4020_, M_in:30, N_out:30, Tr_sess 70, Ts_ess:69, Err: 0.036084
+gmdh, dataFN nikkei_1_4_05_1_31_22.csv, SaveFN nikkey4030_, M_in:30, N_out:30, Tr_sess 69, Ts_ess:68, Err: 0.058922
+gmdh, dataFN dax_1_3_05_1_31_22.csv, SaveFN dax4030_, M_in:30, N_out:30, Tr_sess 71, Ts_ess:70, Err: 0.048381
+
+relu, dataFN nasdaq_1_3_05-1_28_22.csv, M_in:30, N_out:30, Tr_sess:70, Ts_sess:69, Err: 0.067322
+relu, dataFN dj_1_3_05-1_28_22.csv, M_in:30, N_out:30, Tr_sess:70, Ts_sess:69, Err: 0.056467
+relu, dataFN nikkei_1_4_05_1_31_22.csv, M_in:30, N_out:30, Tr_sess:69, Ts_sess:68, Err: 0.068685
+relu, dataFN dax_1_3_05_1_31_22.csv, M_in:30, N_out:30, Tr_sess:71, Ts_sess:70, Err: 0.060784
+
+ann_reg, dataFN nasdaq_1_3_05-1_28_22.csv, M_in:30, N_out:30, Tr_sess:70, Ts_sess:69, Err: 0.064293
+ann_reg, dataFN dj_1_3_05-1_28_22.csv, M_in:30, N_out:30, Tr_sess:70, Ts_sess:69, Err: 0.055646
+ann_reg, dataFN nikkei_1_4_05_1_31_22.csv, M_in:30, N_out:30, Tr_sess:69, Ts_sess:68, Err: 0.067698
+ann_reg, dataFN dax_1_3_05_1_31_22.csv, M_in:30, N_out:30, Tr_sess:71, Ts_sess:70, Err: 0.062187
+
+tanh, dataFN nasdaq_1_3_05-1_28_22.csv, M_in:30, N_out:30, Tr_sess:70, Ts_sess:69, Err: 0.067310
+tanh, dataFN dj_1_3_05-1_28_22.csv, M_in:30, N_out:30, Tr_sess:70, Ts_sess:69, Err: 0.056691
+tanh, dataFN nikkei_1_4_05_1_31_22.csv, M_in:30, N_out:30, Tr_sess:69, Ts_sess:68, Err: 0.068098
+tanh, dataFN dax_1_3_05_1_31_22.csv, M_in:30, N_out:30, Tr_sess:71, Ts_sess:70, Err: 0.062294
+
+lstm_seq, dataFN nasdaq_1_3_05-1_28_22.csv, M_in:30, N_out:30, Tr_sess:70, Ts_sess:69, Err: 0.085818
+lstm_seq, dataFN dj_1_3_05-1_28_22.csv, M_in:30, N_out:30, Tr_sess:70, Ts_sess:69, Err: 0.068545
+lstm_seq, dataFN nikkei_1_4_05_1_31_22.csv, M_in:30, N_out:30, Tr_sess:69, Ts_sess:68, Err: 0.087287
+lstm_seq, dataFN dax_1_3_05_1_31_22.csv, M_in:30, N_out:30, Tr_sess:71, Ts_sess:70, Err: 0.078306

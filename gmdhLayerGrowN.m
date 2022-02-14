@@ -1,8 +1,8 @@
 function [cgraph, regNet, ll, nOut, curGMDHLayerName, curGMDHRegressionName] =...
-    gmdhLayerGrow(cgraph, prevLayerName, sOptions, X, Y, m_in, i_sess, n_out, ll, accTarget, nTarget, nMin, dAccMin, lMax)
+    gmdhLayerGrowN(cgraph, prevLayerName, sOptions, X, Y, m_in, i_sess, n_out, ll, accTarget, nTarget, nMin, dAccMin, lMax)
 
     % Starting placeholder for accuracy
-    accCurr = 1.;
+    %accCurr = 1.;
     %num_out_old = nTarget;
     accNext = accTarget;
     i = i_sess;

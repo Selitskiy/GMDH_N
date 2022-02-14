@@ -1,4 +1,4 @@
-function [regNet, cgraph] = makeGMDHNet(i, m_in, n_out, k_hid1, k_hid2, mb_size, X, Y)
+function [regNet, cgraph] = makeGMDHvNet(i, m_ine, n_oute, n_out, k_hid1, k_hid2, mb_size, X, Y)
     
 sOptions = trainingOptions('adam', ...
 'ExecutionEnvironment','parallel',...
@@ -24,7 +24,7 @@ sOptions2 = trainingOptions('adam', ...
     % Start growing GMDH net
     prevLayerName = 'inputFeature';
     oLayers = [
-        featureInputLayer(m_in, 'Name', prevLayerName)
+        featureInputLayer(m_ine, 'Name', prevLayerName)
     ];
     cgraph = layerGraph(oLayers);
 
@@ -46,11 +46,11 @@ sOptions2 = trainingOptions('adam', ...
     min_neuro2 = 0;
 
     % Number of velocity outputs
-    %n_outv = n_oute - n_out;
+    n_outv = n_oute - n_out;
 
 
     [cgraph, regNet, ll, k_hid1_real, curGMDHLayerName, curGMDHRegressionName] =... 
-        gmdhLayerGrowN(cgraph, prevLayerName, sOptions, X, Y, m_in, i, n_out, ll, accTarget, max_neuro1, min_neuro1, dAccMin, lMax);
+        gmdhLayerGrowN(cgraph, prevLayerName, sOptions, X, Y, m_ine, i, n_oute, ll, accTarget, max_neuro1, min_neuro1, dAccMin, lMax);
     prevLayerName = curGMDHLayerName;
 
     if(k_hid1_real > 1)
@@ -76,7 +76,7 @@ sOptions2 = trainingOptions('adam', ...
         lMax = 3;
 
         [cgraph, regNet, ll, k_hid2_real, curGMDHLayerName, curGMDHRegressionName] =... 
-            gmdhLayerGrowN(cgraph, prevLayerName, sOptions2, X, Y, k_hid1_real, i, n_out, ll, accTarget, max_neuro2, min_neuro2, dAccMin, lMax);
+            gmdhLayerGrowN(cgraph, prevLayerName, sOptions2, X, Y, k_hid1_real, i, n_oute, ll, accTarget, max_neuro2, min_neuro2, dAccMin, lMax);
         prevLayerName = curGMDHLayerName;
 
         if(k_hid2_real > 1)
@@ -86,7 +86,7 @@ sOptions2 = trainingOptions('adam', ...
             cgraph = connectLayers(cgraph, curGMDHLayerName, fullyConnectdLastLayerName);
 
             fullyConnectedOutLayerName = 'fcOut';
-            fullyConnectedOutLayer = fullyConnectedLayer(n_out,'Name',fullyConnectedOutLayerName);
+            fullyConnectedOutLayer = fullyConnectedLayer(n_oute,'Name',fullyConnectedOutLayerName);
             cgraph = addLayers(cgraph, fullyConnectedOutLayer);
             cgraph = connectLayers(cgraph, fullyConnectdLastLayerName, fullyConnectedOutLayerName);
 
@@ -95,10 +95,10 @@ sOptions2 = trainingOptions('adam', ...
     end
 
     regressionLayerName = "regOut";
-    regressionLayerLast = regressionLayer('Name', regressionLayerName);
-    %regressionLayerLast = vRegression(regressionLayerName, n_outv);
+    %regressionLayer = regressionLayer('Name', regressionLayerName);
+    regressionLayer = vRegression(regressionLayerName, n_outv);
 
-    cgraph = replaceLayer(cgraph, curGMDHRegressionName, regressionLayerLast);
+    cgraph = replaceLayer(cgraph, curGMDHRegressionName, regressionLayer);
     cgraph = connectLayers(cgraph, prevLayerName, regressionLayerName);
 
 
